@@ -1,8 +1,9 @@
 import React, {useEffect, useState, useRef} from 'react';
-import {getChargeMap} from '../service/ChargeMap';
 import {GoogleMap, LoadScript, Marker} from '@react-google-maps/api';
 import {API_KEY_GOOGLE_MAPS} from '../env';
 import {Addresses} from "./Addresses";
+import {addressesClient} from '../apollo/client';
+import {ADDRESSES_QUERY} from "../apollo/queries";
 
 const containerStyle = {
 	width: '1500px',
@@ -16,16 +17,23 @@ export function Map() {
 		lng: 13.4050
 	});
 	useEffect(() => {
-		console.log(center.lat)
-		getChargeMap(center, 10).then(values => {
-			setStations(values);
+		addressesClient.query({
+			query: ADDRESSES_QUERY,
+			fetchPolicy: "cache-first",
+			variables: {
+				lat: center.lat,
+				lng: center.lng,
+				dist: 10
+			},
+		}).then(result => {
+			setStations(result.data.addresses);
 		});
 	}, [center.lat, center.lng]);
 
 	const mapRef = useRef();
 	const onIdle = () => {
 		setCenter(currentCenter => {
-			const {lat, lng } = mapRef.current.state.map.center
+			const {lat, lng} = mapRef.current.state.map.center
 			if (currentCenter.lat === lat() && currentCenter.lng === lng()) return currentCenter
 
 			return {lat: lat(), lng: lng()}
@@ -47,11 +55,11 @@ export function Map() {
 				>
 					{stations && stations.map((res) => {
 						return <Marker
-							key={res.AddressInfo.Latitude + res.AddressInfo.Longitude}
+							key={res.lat + res.lng}
 							position={
 								{
-									lat: res.AddressInfo.Latitude,
-									lng: res.AddressInfo.Longitude
+									lat: res.lat,
+									lng: res.lng
 								}}
 							onClick={() => {
 							}}
